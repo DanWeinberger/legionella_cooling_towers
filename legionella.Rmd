@@ -39,6 +39,7 @@ library(ggplot2)
 library(gridExtra)
 library(dplyr)
 library(zipcodeR)
+library(lubridate)
 library(scales)
 ```
 
@@ -57,7 +58,7 @@ data$last_legionella_date=as.Date(data$last_legionella_date)
 
 data= dplyr::filter(data,last_legionella_date>"2015-01-01")
 
-lookup <- reverse_zipcode(data$zip)
+lookup <- reverse_zipcode(data$zip) # creates a table mapping ZIPs to county/town
 
 
 data <- merge(data, lookup,by.x='zip', by.y='zipcode', all.x=T)
@@ -75,68 +76,62 @@ legionella_neg=filter(data,exceedance=="no")
 ```{r,echo = FALSE}
 Date.bymonth=cut(data$last_legionella_date,breaks="months")
 bDates=as.data.frame(table(Date.bymonth))
+bDates$Date.bymonth <- as.Date(bDates$Date.bymonth)
 t_dataset=bDates
 colnames(t_dataset)[2]="m_sampling_freq"
+
+data$monthdate <- floor_date(data$last_legionella_date, 'month')
+
+month.summary <- data %>%
+  group_by(monthdate) %>%
+  summarize(N_test=n() , N_pos= sum(exceedance=="yes") ) %>%
+  ungroup() %>%
+  mutate(prop_pos=N_pos/N_test)
 ```
 
 ```{r,echo = FALSE, fig.height=4,fig.width=6}
-ggplot(bDates, aes(x=Date.bymonth, y=Freq,group=1))+geom_line()+geom_point(size=4,shape=20)+
-  ggtitle("Monthly Sampling Number")+theme_classic()+ylab("Frequency")+xlab("Date by month")+
-  theme(axis.text.x = element_text(angle=90, hjust=0.5, vjust=0.5))+
-  geom_text(aes(label=Freq),hjust = 1,vjust=-0.5)
+ggplot(month.summary, aes(x=monthdate, y=N_test,group=1))+
+  geom_line()+
+  #geom_point(size=4,shape=20)+
+  ggtitle("Monthly Sampling Number")+
+  theme_classic()+
+  ylab("Frequency")+
+  xlab("Date by month")+
+  theme(axis.text.x = element_text(angle=90, hjust=0.5, vjust=0.5))
+  #geom_text(aes(label=Freq),hjust = 1,vjust=-0.5)
 ```
 
 2. Monthly number of positive counts, how many positive records of legionella exceedance are taken every month, labeled as m_positive_freq.
 
-```{r,echo = FALSE}
-pos=data[which(data$exceedance=="yes"),]
-m_pos=as.data.frame(table(cut(pos$last_legionella_date,breaks="months")))
-for (i in t_dataset[,1]){
-  id_pos=which(m_pos[,1]==i)
-  id_t=which(t_dataset[,1]==i)
-  if (length(id_pos)==0){
-    t_dataset[id_t,3]=0
-  }
-  else{
-    t_dataset[id_t,3]=m_pos[id_pos,2]
-  }
-}
-colnames(t_dataset)[3]="m_positive_freq"
-```
 
 ```{r,echo = FALSE, fig.height=4,fig.width=6}
-ggplot(t_dataset, aes(x=Date.bymonth, y=m_positive_freq,group=1))+
-  geom_line()+geom_point(size=4,shape=20)+
-  ggtitle("Monthly Number of Positive Samples")+
-  theme_classic()+ylab("Frequency")+xlab("Date by month")+
-  theme(axis.text.x = element_text(angle=90, hjust=0.5, vjust=0.5))+
-  geom_text(aes(label=m_positive_freq),hjust = 1,vjust=-0.5)
+ggplot(month.summary, aes(x=monthdate, y=N_pos,group=1))+
+  geom_line()+
+  #geom_point(size=4,shape=20)+
+  ggtitle("Monthly Number Positive")+
+  theme_classic()+
+  ylab("Frequency")+
+  xlab("Date by month")+
+  theme(axis.text.x = element_text(angle=90, hjust=0.5, vjust=0.5))
+  #geom_text(aes(label=Freq),hjust = 1,vjust=-0.5)
 ```
+
+
 
 3. Monthly proportion of positive counts, monthly positive counts/monthly sampling number, labeled as named as m_positive_p. m_positive_percentage is the percentage format of m_positive_p.
-
-```{r,echo = FALSE}
-for (i in 1:dim(t_dataset)[1]){
-  if (t_dataset[i,2]!=0){
-    t_dataset[i,4]=round(t_dataset[i,3]/t_dataset[i,2],5)
-  }
-  else{
-    t_dataset[i,4]=0
-  }
-}
-colnames(t_dataset)[4]="m_positive_p"
-t_dataset$m_positive_percentage=percent(as.numeric(t_dataset$m_positive_p),0.01)
-```
-
 ```{r,echo = FALSE, fig.height=4,fig.width=6}
-ggplot(t_dataset, aes(x=Date.bymonth, y=m_positive_p*100,group=1))+
-  geom_line()+geom_point(size=4,shape=20)+
-  ggtitle("Monthly proportion of Positive Samples")+
-  theme_classic()+ylab("Proportion(%)")+xlab("Date by month")+
-  ylim(0,max(t_dataset$m_positive_p)*100*1.2)+
+ggplot(month.summary, aes(x=monthdate, y=prop_pos,group=1))+
+  geom_line()+
+  #geom_point(size=4,shape=20)+
+  ggtitle("Proportion Positive")+
+  theme_classic()+
+  ylab("Frequency")+
+  xlab("Date by month")+
   theme(axis.text.x = element_text(angle=90, hjust=0.5, vjust=0.5))
-knitr::kable(t_dataset[,c(1,5)])
+  #geom_text(aes(label=Freq),hjust = 1,vjust=-0.5)
 ```
+
+
 
 4. Number of new towers taken into study every month, labeled as m_new_towers.
 
