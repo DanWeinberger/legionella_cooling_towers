@@ -236,19 +236,9 @@ median(na.omit(first_pos$`Service age`)) #11.893
 time=c((2015*12):(2019*12+10))
 ```
 
-1. Plot of number of positive cases vs time, and proportion of positive cases vs time.
 
-```{r,echo = FALSE, fig.height=3,fig.width=4}
-plot(x=time/12,y=t_dataset$m_positive_freq,type="l",xlab="Year",
-     ylab="Positive cases",col="blue",bty="l")
-```
 
-```{r,echo = FALSE, fig.height=3,fig.width=4}
-plot(x=time/12,y=t_dataset$m_positive_p*100,type="l",xlab="Year",
-     ylab="Percentage of positive cases (%)",col="blue",bty="l")
-```
-
-2. Construct the model with frequency(number of positive cases).
+1. Construct the model with frequency(number of positive cases).
 Get monthly positive cases (in log scale), labeled as logpos. To avoid 0 causing log(0)=-Inf, we simply add 1 to each item before log transformation.
 
 ```{r,echo = FALSE}
